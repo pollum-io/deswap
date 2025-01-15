@@ -1,0 +1,10 @@
+{
+    "version": 2,
+    "functions": {
+        "app/api/quote/route.ts": {
+            "memory": 1024,
+            "maxDuration": 10
+        }
+    },
+    "buildCommand": "npm run build"
+}
