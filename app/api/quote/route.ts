@@ -5,7 +5,6 @@ import { QuoteRequest } from '../../../types';
 import { SUPPORTED_CHAINS } from '../../../config/constants';
 
 export const runtime = 'edge';
-export const region = 'iad1'; // US East (N. Virginia)
 const oneInchProvider = new OneInchProvider();
 
 const corsHeaders = {
