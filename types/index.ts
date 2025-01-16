@@ -18,7 +18,6 @@ export interface SwapRequest extends BaseRequest {
 // Token information
 export interface TokenInfo {
     address: string;
-    amount: string;
     symbol?: string;
     name?: string;
     decimals?: number;
@@ -33,6 +32,7 @@ export interface AllowanceInfo {
         to: string;
         data: string;
         value: string;
+        gasPrice: string;
     }
 }
 
@@ -55,11 +55,13 @@ export interface SwapResponse {
     chainId: string;
     srcToken: TokenInfo;
     dstToken: TokenInfo;
+    dstAmount: string;
+    fromAmount: string;
     from: string;
     to: string;
     data: string;
     value: string;
     gasLimit: string;
     gasPrice: string;
-    allowance?: AllowanceInfo;
+    protocols: string[]
 }

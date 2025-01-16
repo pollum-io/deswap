@@ -84,7 +84,7 @@ export class OneInchProvider {
         amount: string
     ): Promise<AllowanceInfo> {
         const allowanceData = await this.makeRequest<{ allowance: string }>(chainId, '/approve/allowance', {
-            tokenAddress,
+            tokenAddress: tokenAddress,
             walletAddress: userAddress
         });
 
@@ -98,18 +98,17 @@ export class OneInchProvider {
                 to: string;
                 data: string;
                 value: string;
+                gasPrice: string;
             }>(chainId, '/approve/transaction', {
-                tokenAddress,
-                amount
+                tokenAddress: tokenAddress
             });
-
             approvalNeeded = {
                 to: approvalTx.to,
                 data: approvalTx.data,
-                value: approvalTx.value
+                value: approvalTx.value,
+                gasPrice: approvalTx.gasPrice
             };
         }
-
         return {
             required: amount,
             current: allowanceData.allowance,
@@ -126,7 +125,7 @@ export class OneInchProvider {
         const params = {
             src: request.fromToken,
             dst: request.toToken,
-            amount: request.amount.toString(),
+            amount: request.amount,
             includeGas: 'true',
             includeTokensInfo: 'true',
             includeProtocols: 'true',
@@ -148,19 +147,17 @@ export class OneInchProvider {
             chainId: request.chainId,
             srcToken: {
                 address: quote.srcToken.address,
-                amount: quote.srcToken.amount,
                 symbol: quote.srcToken.symbol,
                 name: quote.srcToken.name,
                 decimals: quote.srcToken.decimals,
             },
             dstToken: {
                 address: quote.dstToken.address,
-                amount: quote.dstToken.amount,
                 symbol: quote.dstToken.symbol,
                 name: quote.dstToken.name,
                 decimals: quote.dstToken.decimals,
             },
-            fromAmount: quote.fromAmount,
+            fromAmount: request.amount,
             dstAmount: quote.dstAmount,
             protocols: quote.protocols,
             gas: quote.gas,
@@ -185,28 +182,30 @@ export class OneInchProvider {
             referrerAddress: this.referrerAddress,
         };
 
-        let allowance;
-        if (request.fromToken !== '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE') {
-            allowance = await this.checkAllowance(
-                request.chainId,
-                request.fromToken,
-                request.userAddress,
-                request.amount
-            );
-        }
+        // let allowance;
+        // if (request.fromToken !== '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE') {
+        //     allowance = await this.checkAllowance(
+        //         request.chainId,
+        //         request.fromToken,
+        //         request.userAddress,
+        //         request.amount
+        //     );
+        // }
 
         const swap = await this.makeRequest<{
             srcToken: TokenInfo;
             dstToken: TokenInfo;
             fromAmount: string;
             dstAmount: string;
-            protocols: string;
-            from: string;
-            to: string;
-            data: string;
-            value: string;
-            gasPrice: string;
-            gas: string;
+            protocols: string[];
+            tx: {
+                from: string;
+                to: string;
+                data: string;
+                value: string;
+                gas: string;
+                gasPrice: string;
+            }
         }>(request.chainId, '/swap', params);
 
         return {
@@ -214,25 +213,25 @@ export class OneInchProvider {
             chainId: request.chainId,
             srcToken: {
                 address: swap.srcToken.address,
-                amount: swap.srcToken.amount,
                 symbol: swap.srcToken.symbol,
                 name: swap.srcToken.name,
                 decimals: swap.srcToken.decimals,
             },
             dstToken: {
                 address: swap.dstToken.address,
-                amount: swap.dstToken.amount,
                 symbol: swap.dstToken.symbol,
                 name: swap.dstToken.name,
                 decimals: swap.dstToken.decimals,
             },
-            from: swap.from,
-            to: swap.to,
-            data: swap.data,
-            value: swap.value,
-            gasLimit: this.adjustGasLimit(swap.gas),
-            gasPrice: swap.gasPrice,
-            ...(allowance ? { allowance } : {}),
+            dstAmount: swap.dstAmount,
+            fromAmount: request.amount,
+            from: swap.tx.from,
+            to: swap.tx.to,
+            data: swap.tx.data,
+            value: swap.tx.value,
+            gasLimit: this.adjustGasLimit(swap.tx.gas),
+            gasPrice: swap.tx.gasPrice,
+            protocols: swap.protocols,
         };
     }
 }
