@@ -44,8 +44,10 @@ export interface QuoteResponse {
     dstToken: TokenInfo;
     fromAmount: string;
     dstAmount: string;
-    protocols: string[];
-    gas: string;
+    protocols: any[];
+    gas?: string;
+    slippageBps?: string;
+    priceImpactPct?: string;
 }
 
 

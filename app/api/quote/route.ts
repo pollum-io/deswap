@@ -3,14 +3,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { OneInchProvider } from '../../../lib/providers/1inch';
 import { QuoteRequest } from '../../../types';
 import { SUPPORTED_CHAINS } from '../../../config/constants';
+import { JupiterProvider } from '../../../lib/providers/jupiter';
 
 export const runtime = 'edge';
 const oneInchProvider = new OneInchProvider();
+const jupiterProvider = new JupiterProvider();
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Content-Type': 'application/json',
 };
 
 function getProvider(chainId: string) {
@@ -29,6 +32,8 @@ function getProvider(chainId: string) {
         case '8453':  // base
         case '324':   // zksync
             return oneInchProvider;
+        case '101':
+            return jupiterProvider;
         default:
             throw new Error('Unsupported chain ID');
     }

@@ -7,5 +7,6 @@ export const SUPPORTED_CHAINS = {
     '43114': 'avalanche',
     '100': 'gnosis',
     '8453': 'base',
-    '324': 'zksync'
+    '324': 'zksync',
+    '101': 'solana'
 } as const;
