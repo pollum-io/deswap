@@ -178,7 +178,7 @@ export class JupiterProvider {
             data: swapResponse.swapTransaction,
             lastValidBlockHeight: swapResponse.lastValidBlockHeight.toString(),
             priceImpactPct: quoteResponse.priceImpactPct,
-            slippageBps: quoteResponse.slippageBps.toString(),
+            slippage: (quoteResponse.slippageBps / 100).toString(),
             protocols: quoteResponse.routePlan.map(route => ({
                 protocol: route.swapInfo.label || route.swapInfo.ammKey,
                 fromToken: route.swapInfo.inputMint,

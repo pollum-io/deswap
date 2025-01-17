@@ -175,6 +175,7 @@ Response:
   dstAmount: string;
   from: string;
   data: string;        // Encoded transaction data
+  slippage: string;          // For Solana
   // Optional fields depending on chain
   value?: string;      // For EVM chains
   gasLimit?: string;   // For EVM chains
@@ -182,7 +183,6 @@ Response:
   // Solana specific fields
   lastValidBlockHeight?: string;  // For Solana
   priceImpactPct?: string;       // For Solana
-  slippageBps?: string;          // For Solana
   protocols: any[];
 }
 ```

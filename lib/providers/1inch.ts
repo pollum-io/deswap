@@ -232,6 +232,7 @@ export class OneInchProvider {
             gasLimit: this.adjustGasLimit(swap.tx.gas),
             gasPrice: swap.tx.gasPrice,
             protocols: swap.protocols,
+            slippage: request.slippage,
         };
     }
 }

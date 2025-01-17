@@ -67,7 +67,7 @@ export interface SwapResponse {
     gasLimit?: string;
     gasPrice?: string;
     lastValidBlockHeight?: string;
-    slippageBps?: string;
+    slippage: string;
     priceImpactPct?: string;
 }
 
