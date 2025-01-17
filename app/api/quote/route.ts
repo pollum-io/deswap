@@ -1,9 +1,9 @@
 // app/api/quote/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { OneInchProvider } from '../../../lib/providers/1inch';
-import { QuoteRequest } from '../../../types';
-import { SUPPORTED_CHAINS } from '../../../config/constants';
-import { JupiterProvider } from '../../../lib/providers/jupiter';
+import { OneInchProvider } from '@/lib/providers/1inch';
+import { QuoteRequest } from '@/types';
+import { SUPPORTED_CHAINS } from '@/config/constants';
+import { JupiterProvider } from '@/lib/providers/jupiter';
 
 export const runtime = 'edge';
 const oneInchProvider = new OneInchProvider();
@@ -32,7 +32,7 @@ function getProvider(chainId: string) {
         case '8453':  // base
         case '324':   // zksync
             return oneInchProvider;
-        case '101':
+        case '101': // solana
             return jupiterProvider;
         default:
             throw new Error('Unsupported chain ID');

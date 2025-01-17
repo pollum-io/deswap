@@ -1,13 +1,18 @@
 import { ftch } from 'micro-ftch';
-import { QuoteRequest, QuoteResponse, SwapRequest, TokenInfo } from '../../types';
+import { JupiterSwapResponse, QuoteRequest, QuoteResponse, SwapRequest, SwapResponse, TokenInfo } from '@/types';
 import { validateAddress } from 'micro-sol-signer';
 import { SUPPORTED_CHAINS } from '@/config/constants';
 
 export class JupiterProvider {
     private readonly fetch: ReturnType<typeof ftch>;
-
+    private readonly referrerAddress: string;
+    private readonly fee = '100'; // 1% fee in bps
     constructor() {
 
+        const referrerAddress = process.env.SOL_REFERRER_ADDRESS;
+        if (!referrerAddress) throw new Error('REFERRER_ADDRESS is required');
+        validateAddress(referrerAddress)
+        this.referrerAddress = referrerAddress;
         this.fetch = ftch(globalThis.fetch, {
             timeout: 10000,
             concurrencyLimit: 5,
@@ -64,7 +69,7 @@ export class JupiterProvider {
             inputMint: request.fromToken,
             outputMint: request.toToken,
             amount: request.amount,
-            platformFeeBps: '100' // 1% in bps
+            platformFeeBps: this.fee
         };
 
         const quote = await this.makeRequest<{
@@ -72,7 +77,6 @@ export class JupiterProvider {
             inAmount: string;
             outputMint: string;
             outAmount: string;
-            otherAmountThreshold: string;
             slippageBps: number;
             priceImpactPct: string;
             routePlan: Array<{
@@ -113,6 +117,79 @@ export class JupiterProvider {
             }))
         };
     }
+
+    async getSwap(request: SwapRequest): Promise<SwapResponse> {
+        if (!this.validateRequest(request)) {
+            throw new Error('Invalid request parameters');
+        }
+        validateAddress(request.userAddress)
+        // Get quote first
+        const quoteResponse = await this.makeRequest<{
+            inAmount: string;
+            outAmount: string;
+            slippageBps: number;
+            priceImpactPct: string;
+            routePlan: Array<{
+                swapInfo: {
+                    ammKey: string;
+                    label?: string;
+                    inputMint: string;
+                    outputMint: string;
+                    inAmount: string;
+                    outAmount: string;
+                },
+                percent: string;
+            }>;
+        }>('/quote', {
+            inputMint: request.fromToken,
+            outputMint: request.toToken,
+            amount: request.amount,
+            slippageBps: Math.floor(parseFloat(request.slippage) * 100).toString(),
+            platformFeeBps: this.fee
+        });
+
+        // Get swap transaction
+        const swapResponse = await this.fetch(this.getApiUrl('/swap'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                quoteResponse,
+                userPublicKey: request.userAddress,
+                feeAccount: this.referrerAddress,
+            })
+        }).then(r => r.json() as Promise<JupiterSwapResponse>);
+
+        // Get token information
+        const [srcTokenInfo, dstTokenInfo] = await Promise.all([
+            this.fetchTokenInfo(request.fromToken),
+            this.fetchTokenInfo(request.toToken)
+        ]);
+
+        return {
+            provider: 'jupiter',
+            chainId: request.chainId,
+            srcToken: srcTokenInfo,
+            dstToken: dstTokenInfo,
+            fromAmount: quoteResponse.inAmount,
+            dstAmount: quoteResponse.outAmount,
+            from: request.userAddress,
+            data: swapResponse.swapTransaction,
+            lastValidBlockHeight: swapResponse.lastValidBlockHeight.toString(),
+            priceImpactPct: quoteResponse.priceImpactPct,
+            slippageBps: quoteResponse.slippageBps.toString(),
+            protocols: quoteResponse.routePlan.map(route => ({
+                protocol: route.swapInfo.label || route.swapInfo.ammKey,
+                fromToken: route.swapInfo.inputMint,
+                toToken: route.swapInfo.outputMint,
+                fromAmount: route.swapInfo.inAmount,
+                toAmount: route.swapInfo.outAmount
+            })),
+        };
+    }
+
+
     private async fetchTokenInfo(mintAddress: string): Promise<TokenInfo> {
         const response = await this.fetch(`https://tokens.jup.ag/token/${mintAddress}`, {
             headers: {

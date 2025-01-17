@@ -1,12 +1,13 @@
 // app/api/swap/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { OneInchProvider } from '../../../lib/providers/1inch';
-import { SwapRequest } from '../../../types';
-import { SUPPORTED_CHAINS } from '../../../config/constants';
-import { addr } from 'micro-eth-signer';
+import { OneInchProvider } from '@/lib/providers/1inch';
+import { SwapRequest } from '@/types';
+import { SUPPORTED_CHAINS } from '@/config/constants';
+import { JupiterProvider } from '@/lib/providers/jupiter';
 
 export const runtime = 'edge';
 const oneInchProvider = new OneInchProvider();
+const jupiterProvider = new JupiterProvider();
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -30,6 +31,8 @@ function getProvider(chainId: string) {
         case '8453':  // base
         case '324':   // zksync
             return oneInchProvider;
+        case '101': // solana
+            return jupiterProvider;
         default:
             throw new Error('Unsupported chain ID');
     }
@@ -95,14 +98,6 @@ export async function GET(request: NextRequest) {
         if (!swapRequest.slippage) {
             return NextResponse.json(
                 { error: 'Slippage is required' },
-                { status: 400, headers: corsHeaders }
-            );
-        }
-
-        // Validate user address format
-        if (!addr.isValid(swapRequest.userAddress)) {
-            return NextResponse.json(
-                { error: 'Invalid user address format' },
                 { status: 400, headers: corsHeaders }
             );
         }

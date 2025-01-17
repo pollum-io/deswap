@@ -60,10 +60,19 @@ export interface SwapResponse {
     dstAmount: string;
     fromAmount: string;
     from: string;
-    to: string;
     data: string;
-    value: string;
-    gasLimit: string;
-    gasPrice: string;
-    protocols: string[]
+    protocols: any[];
+    to?: string;
+    value?: string;
+    gasLimit?: string;
+    gasPrice?: string;
+    lastValidBlockHeight?: string;
+    slippageBps?: string;
+    priceImpactPct?: string;
+}
+
+// Get swap transaction
+export interface JupiterSwapResponse {
+    swapTransaction: string;
+    lastValidBlockHeight: number;
 }

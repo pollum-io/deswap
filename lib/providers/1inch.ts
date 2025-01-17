@@ -1,7 +1,7 @@
 import { ftch } from 'micro-ftch';
-import { QuoteRequest, QuoteResponse, SwapRequest, SwapResponse, AllowanceInfo, TokenInfo } from '../../types';
+import { QuoteRequest, QuoteResponse, SwapRequest, SwapResponse, AllowanceInfo, TokenInfo } from '@/types';
 import { addr } from 'micro-eth-signer';
-import { SUPPORTED_CHAINS } from '../../config/constants';
+import { SUPPORTED_CHAINS } from '@/config/constants';
 
 export class OneInchProvider {
     private readonly fetch: ReturnType<typeof ftch>;
@@ -11,7 +11,7 @@ export class OneInchProvider {
 
     constructor() {
         const apiKey = process.env.ONEINCH_API_KEY;
-        const referrerAddress = process.env.REFERRER_ADDRESS;
+        const referrerAddress = process.env.EVM_REFERRER_ADDRESS;
 
         if (!apiKey) throw new Error('ONEINCH_API_KEY is required');
         if (!referrerAddress) throw new Error('REFERRER_ADDRESS is required');
@@ -165,7 +165,7 @@ export class OneInchProvider {
     }
 
     async getSwap(request: SwapRequest): Promise<SwapResponse> {
-        if (!this.validateRequest(request)) {
+        if (!this.validateRequest(request) || !addr.isValid(request.userAddress)) {
             throw new Error('Invalid request parameters');
         }
 
