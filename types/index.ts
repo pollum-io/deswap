@@ -67,9 +67,8 @@ export interface JupiterSwapResponse {
 export interface ApprovalResponse {
     provider: string;
     chainId: string;
-    token: string;
-    spender: string;
-    owner: string;
+    to: string;
+    from: string;
     amount: string;
     data: string;
     gasLimit: string;

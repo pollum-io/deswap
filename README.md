@@ -148,7 +148,7 @@ Response:
 
 ### GET /api/swap
 
-Returns the transaction data needed to execute the swap.
+Returns either the swap transaction data or token approval data if needed.
 
 Request parameters:
 
@@ -185,4 +185,26 @@ Response:
   priceImpactPct?: string;       // For Solana
   protocols: any[];
 }
+```
+
+Approval Response (when token approval is needed):
+
+```typescript
+{
+  provider: "approval";
+  chainId: string;
+  to: string; // Token contract address
+  from: string; // User address
+  amount: string; // Max uint256 for infinite approval
+  data: string; // Encoded approval data
+  gasLimit: string; // Adjusted gas limit
+  gasPrice: string; // Adjusted gas price
+}
+```
+
+Usage Example
+Swap 1 DAI to ETH:
+
+```bash
+curl "http://localhost:3000/api/swap?chainId=1&fromToken=0x6B175474E89094C44Da98b954EedeAC495271d0F&toToken=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE&amount=1000000000000000000&userAddress=0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045&slippage=1
 ```

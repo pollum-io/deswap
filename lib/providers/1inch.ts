@@ -134,9 +134,8 @@ export class OneInchProvider {
         return {
             provider: 'approval',
             chainId,
-            token: tokenAddress,
-            spender,
-            owner: userAddress,
+            to: tokenAddress,
+            from: userAddress,
             amount: amounts.maxUint256.toString(),
             data: `0x${Buffer.from(data).toString('hex')}`,
             gasLimit: this.adjustGas(gasLimit.toString()),
