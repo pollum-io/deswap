@@ -23,19 +23,6 @@ export interface TokenInfo {
     decimals?: number;
 }
 
-// Allowance information
-export interface AllowanceInfo {
-    required: string;
-    current: string;
-    approved: boolean;
-    approvalNeeded?: {
-        to: string;
-        data: string;
-        value: string;
-        gasPrice: string;
-    }
-}
-
 // Quote specific response
 export interface QuoteResponse {
     provider: string;
@@ -75,4 +62,16 @@ export interface SwapResponse {
 export interface JupiterSwapResponse {
     swapTransaction: string;
     lastValidBlockHeight: number;
+}
+
+export interface ApprovalResponse {
+    provider: string;
+    chainId: string;
+    token: string;
+    spender: string;
+    owner: string;
+    amount: string;
+    data: string;
+    gasLimit: string;
+    gasPrice: string;
 }

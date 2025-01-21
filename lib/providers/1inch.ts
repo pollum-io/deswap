@@ -1,7 +1,10 @@
-import { ftch } from 'micro-ftch';
-import { QuoteRequest, QuoteResponse, SwapRequest, SwapResponse, AllowanceInfo, TokenInfo } from '@/types';
+import { ftch, jsonrpc } from 'micro-ftch';
+import { QuoteRequest, QuoteResponse, SwapRequest, SwapResponse, TokenInfo, ApprovalResponse } from '@/types';
 import { addr } from 'micro-eth-signer';
-import { SUPPORTED_CHAINS } from '@/config/constants';
+import { createContract } from 'micro-eth-signer/abi';
+import { amounts } from 'micro-eth-signer/utils';
+import { Web3Provider } from 'micro-eth-signer/net';
+import { SUPPORTED_CHAINS, RPCS, ERC20_ABI, ONEINCH_SPENDER_ADDRESSES } from '@/config/constants';
 
 export class OneInchProvider {
     private readonly fetch: ReturnType<typeof ftch>;
@@ -28,6 +31,19 @@ export class OneInchProvider {
                 : undefined,
         });
     }
+
+    private getProvider(chainId: string): Web3Provider {
+        const rpcUrl = RPCS[chainId as keyof typeof RPCS][0]
+        const provider = new Web3Provider(
+            jsonrpc(fetch, rpcUrl)
+        );
+
+        if (!provider) {
+            throw new Error(`No provider available for chain ${chainId}`);
+        }
+        return provider;
+    }
+
 
     private getApiUrl(chainId: string, path: string): string {
         return `https://api.1inch.dev/swap/v6.0/${chainId}${path}`;
@@ -82,38 +98,49 @@ export class OneInchProvider {
         tokenAddress: string,
         userAddress: string,
         amount: string
-    ): Promise<AllowanceInfo> {
-        const allowanceData = await this.makeRequest<{ allowance: string }>(chainId, '/approve/allowance', {
-            tokenAddress: tokenAddress,
-            walletAddress: userAddress
+    ): Promise<ApprovalResponse | null> {
+        const spender = ONEINCH_SPENDER_ADDRESSES[chainId as keyof typeof RPCS];
+        if (!spender) throw new Error(`No spender address for chain ${chainId}`);
+
+        const provider = this.getProvider(chainId);
+        const contract = createContract(ERC20_ABI, provider, tokenAddress);
+
+        // Check current allowance
+        const currentAllowance = await contract.allowance.call({
+            owner: userAddress,
+            spender
         });
 
-        const currentAllowance = BigInt(allowanceData.allowance);
-        const requiredAmount = BigInt(amount);
-        const approved = currentAllowance >= requiredAmount;
-
-        let approvalNeeded;
-        if (!approved) {
-            const approvalTx = await this.makeRequest<{
-                to: string;
-                data: string;
-                value: string;
-                gasPrice: string;
-            }>(chainId, '/approve/transaction', {
-                tokenAddress: tokenAddress
-            });
-            approvalNeeded = {
-                to: approvalTx.to,
-                data: approvalTx.data,
-                value: approvalTx.value,
-                gasPrice: approvalTx.gasPrice
-            };
+        if (BigInt(currentAllowance) >= BigInt(amount)) {
+            return null;
         }
+
+        // Generate approval data
+        const data = contract.approve.encodeInput({
+            spender,
+            amount: amounts.maxUint256
+        });
+
+        // Estimate gas
+        const gasLimit = await provider.estimateGas({
+            from: userAddress,
+            to: tokenAddress,
+            data: Buffer.from(data).toString('hex')
+        });
+
+        // Get gas price
+        const gasPrice = await provider.call('eth_gasPrice', []);
+
         return {
-            required: amount,
-            current: allowanceData.allowance,
-            approved,
-            approvalNeeded
+            provider: 'approval',
+            chainId,
+            token: tokenAddress,
+            spender,
+            owner: userAddress,
+            amount: amounts.maxUint256.toString(),
+            data: `0x${Buffer.from(data).toString('hex')}`,
+            gasLimit: this.adjustGasLimit(gasLimit.toString()),
+            gasPrice: gasPrice.toString()
         };
     }
 
@@ -164,7 +191,7 @@ export class OneInchProvider {
         };
     }
 
-    async getSwap(request: SwapRequest): Promise<SwapResponse> {
+    async getSwap(request: SwapRequest): Promise<SwapResponse | ApprovalResponse> {
         if (!this.validateRequest(request) || !addr.isValid(request.userAddress)) {
             throw new Error('Invalid request parameters');
         }
@@ -182,15 +209,17 @@ export class OneInchProvider {
             referrerAddress: this.referrerAddress,
         };
 
-        // let allowance;
-        // if (request.fromToken !== '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE') {
-        //     allowance = await this.checkAllowance(
-        //         request.chainId,
-        //         request.fromToken,
-        //         request.userAddress,
-        //         request.amount
-        //     );
-        // }
+        if (request.fromToken !== '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE') {
+            const allowance = await this.checkAllowance(
+                request.chainId,
+                request.fromToken,
+                request.userAddress,
+                request.amount
+            );
+            if (allowance) {
+                return allowance;
+            }
+        }
 
         const swap = await this.makeRequest<{
             srcToken: TokenInfo;
