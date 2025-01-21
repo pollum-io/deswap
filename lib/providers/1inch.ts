@@ -89,7 +89,7 @@ export class OneInchProvider {
         return true;
     }
 
-    private adjustGasLimit(gas: string): string {
+    private adjustGas(gas: string): string {
         return (BigInt(gas) * BigInt(125) / BigInt(100)).toString();
     }
 
@@ -139,8 +139,8 @@ export class OneInchProvider {
             owner: userAddress,
             amount: amounts.maxUint256.toString(),
             data: `0x${Buffer.from(data).toString('hex')}`,
-            gasLimit: this.adjustGasLimit(gasLimit.toString()),
-            gasPrice: gasPrice.toString()
+            gasLimit: this.adjustGas(gasLimit.toString()),
+            gasPrice: this.adjustGas(gasPrice.toString())
         };
     }
 
@@ -258,7 +258,7 @@ export class OneInchProvider {
             to: swap.tx.to,
             data: swap.tx.data,
             value: swap.tx.value,
-            gasLimit: this.adjustGasLimit(swap.tx.gas),
+            gasLimit: this.adjustGas(swap.tx.gas),
             gasPrice: swap.tx.gasPrice,
             protocols: swap.protocols,
             slippage: request.slippage,
