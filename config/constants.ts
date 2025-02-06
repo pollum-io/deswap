@@ -165,5 +165,25 @@ export const MIXED_ROUTE_QUOTER_V1_ABI = [
     }
 ] as const;
 
+// Add at the top of your class or as a constant file
+export const BASE_TOKENS = {
+    '1': [ // Ethereum
+        '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
+        '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+        '0x6B175474E89094C44Da98b954EedeAC495271d0F', // DAI
+        '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', // WBTC
+        '0xdAC17F958D2ee523a2206206994597C13D831ec7'  // USDT
+    ],
+    '8453': [ // Base
+        '0x4200000000000000000000000000000000000006', // WETH
+        '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', // USDbC
+        '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb'  // DAI
+    ]
+};
 
-// [{ "inputs": [{ "internalType": "address", "name": "_factory", "type": "address" }, { "internalType": "address", "name": "_factoryV2", "type": "address" }, { "internalType": "address", "name": "_WETH9", "type": "address" }], "stateMutability": "nonpayable", "type": "constructor" }, { "inputs": [], "name": "WETH9", "outputs": [{ "internalType": "address", "name": "", "type": "address" }], "stateMutability": "view", "type": "function" }, { "inputs": [], "name": "factory", "outputs": [{ "internalType": "address", "name": "", "type": "address" }], "stateMutability": "view", "type": "function" }, { "inputs": [], "name": "factoryV2", "outputs": [{ "internalType": "address", "name": "", "type": "address" }], "stateMutability": "view", "type": "function" }, { "inputs": [{ "internalType": "bytes", "name": "path", "type": "bytes" }, { "internalType": "uint256", "name": "amountIn", "type": "uint256" }], "name": "quoteExactInput", "outputs": [{ "internalType": "uint256", "name": "amountOut", "type": "uint256" }, { "internalType": "uint160[]", "name": "v3SqrtPriceX96AfterList", "type": "uint160[]" }, { "internalType": "uint32[]", "name": "v3InitializedTicksCrossedList", "type": "uint32[]" }, { "internalType": "uint256", "name": "v3SwapGasEstimate", "type": "uint256" }], "stateMutability": "nonpayable", "type": "function" }, { "inputs": [{ "components": [{ "internalType": "address", "name": "tokenIn", "type": "address" }, { "internalType": "address", "name": "tokenOut", "type": "address" }, { "internalType": "uint256", "name": "amountIn", "type": "uint256" }], "internalType": "struct IMixedRouteQuoterV1.QuoteExactInputSingleV2Params", "name": "params", "type": "tuple" }], "name": "quoteExactInputSingleV2", "outputs": [{ "internalType": "uint256", "name": "amountOut", "type": "uint256" }], "stateMutability": "view", "type": "function" }, { "inputs": [{ "components": [{ "internalType": "address", "name": "tokenIn", "type": "address" }, { "internalType": "address", "name": "tokenOut", "type": "address" }, { "internalType": "uint256", "name": "amountIn", "type": "uint256" }, { "internalType": "uint24", "name": "fee", "type": "uint24" }, { "internalType": "uint160", "name": "sqrtPriceLimitX96", "type": "uint160" }], "internalType": "struct IMixedRouteQuoterV1.QuoteExactInputSingleV3Params", "name": "params", "type": "tuple" }], "name": "quoteExactInputSingleV3", "outputs": [{ "internalType": "uint256", "name": "amountOut", "type": "uint256" }, { "internalType": "uint160", "name": "sqrtPriceX96After", "type": "uint160" }, { "internalType": "uint32", "name": "initializedTicksCrossed", "type": "uint32" }, { "internalType": "uint256", "name": "gasEstimate", "type": "uint256" }], "stateMutability": "nonpayable", "type": "function" }, { "inputs": [{ "internalType": "int256", "name": "amount0Delta", "type": "int256" }, { "internalType": "int256", "name": "amount1Delta", "type": "int256" }, { "internalType": "bytes", "name": "path", "type": "bytes" }], "name": "uniswapV3SwapCallback", "outputs": [], "stateMutability": "view", "type": "function" }]
+// minimum reserves USD thresholds by chain
+export const MIN_RESERVE_USD = {
+    '1': 10000,    // $10k on Ethereum
+    '8453': 50000  // $5k on Base
+};
+

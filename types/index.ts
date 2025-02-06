@@ -77,20 +77,44 @@ export interface ApprovalResponse {
 
 export interface Pool {
     id: string;
-    token0: { id: string };
-    token1: { id: string };
+    token0: {
+        id: string
+        decimals: number
+    };
+    token1: {
+        id: string
+        decimals: number
+    };
     type: 'v2' | 'v3';
     // V2 specific
     reserve0?: string;
     reserve1?: string;
+    reserveUSD?: string;
     // V3 specific
     feeTier?: string;
     liquidity?: string;
     sqrtPrice?: string;
     tick?: string;
+    totalValueLockedUSD?: string;
 }
 
 export interface Route {
     pools: Pool[];
     path: string[];
+}
+
+export interface CandidatePools {
+    topByBaseWithTokenIn: Pool[];      // Best pools connecting input token to base tokens
+    topByBaseWithTokenOut: Pool[];     // Best pools connecting output token to base tokens
+    topByDirectSwapPool: Pool[];       // Direct pools between input/output
+    topByTVL: Pool[];                  // Overall highest TVL pools
+    topByTVLUsingTokenIn: Pool[];      // Highest TVL pools with input token
+    topByTVLUsingTokenOut: Pool[];     // Highest TVL pools with output token
+    topByTVLUsingTokenInSecondHops: Pool[];  // Second hop pools from input
+    topByTVLUsingTokenOutSecondHops: Pool[]; // Second hop pools to output
+}
+
+export interface PoolsByType {
+    v2: Pool[];
+    v3: Pool[];
 }
