@@ -74,3 +74,23 @@ export interface ApprovalResponse {
     gasLimit: string;
     gasPrice: string;
 }
+
+export interface Pool {
+    id: string;
+    token0: { id: string };
+    token1: { id: string };
+    type: 'v2' | 'v3';
+    // V2 specific
+    reserve0?: string;
+    reserve1?: string;
+    // V3 specific
+    feeTier?: string;
+    liquidity?: string;
+    sqrtPrice?: string;
+    tick?: string;
+}
+
+export interface Route {
+    pools: Pool[];
+    path: string[];
+}

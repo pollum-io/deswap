@@ -1,12 +1,14 @@
 // app/api/quote/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { OneInchProvider } from '@/lib/providers/1inch';
+// import { OneInchProvider } from '@/lib/providers/1inch';
 import { QuoteRequest } from '@/types';
 import { SUPPORTED_CHAINS } from '@/config/constants';
 import { JupiterProvider } from '@/lib/providers/jupiter';
+import { UniswapProvider } from '@/lib/providers/uniswap';
 
 export const runtime = 'edge';
-const oneInchProvider = new OneInchProvider();
+// const oneInchProvider = new OneInchProvider();
+const uniswapProvider = new UniswapProvider();
 const jupiterProvider = new JupiterProvider();
 
 const corsHeaders = {
@@ -31,7 +33,8 @@ function getProvider(chainId: string) {
         case '100':   // gnosis
         case '8453':  // base
         case '324':   // zksync
-            return oneInchProvider;
+            // return oneInchProvider;
+            return uniswapProvider;
         case '101': // solana
             return jupiterProvider;
         default:
