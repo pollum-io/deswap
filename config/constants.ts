@@ -13,7 +13,7 @@ export const SUPPORTED_CHAINS = {
 
 export const RPCS = {
     '1': [  // Ethereum
-        'https://delicate-snowy-friday.quiknode.pro/241eddf89687a5593096dbd4fff60b0dc84bdbb3',
+        'https://eth-mainnet.g.alchemy.com/v2/144hqNBRpxfJS92NkmJVLvUgVNhi0l8l',
         'https://eth.llamarpc.com/',
         'https://rpc.ankr.com/eth',
         'https://ethereum.publicnode.com/',
@@ -139,7 +139,7 @@ export const UNISWAP_UNIVERSAL_ROUTER = {
 export const UNISWAP_SUBGRAPH_URL = {
     '1': {
         v2: 'https://gateway.thegraph.com/api/38b008cde360aa46559b6c06b6d50802/subgraphs/id/EYCKATKGBKLWvSfwvBjzfCBmGwYNdVkduYXVivCsLRFu',
-        v3: 'https://gateway.thegraph.com/api/38b008cde360aa46559b6c06b6d50802/subgraphs/id/5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV'
+        v3: 'https://subgraph.satsuma-prod.com/63d57effd382/quan-digital--423574/community/uniswap-v3-mainnet/version/0.0.1/api'
     },
     '8453': {
         v2: 'https://api.studio.thegraph.com/query/48211/uniswap-v2-base/version/latest',
@@ -187,3 +187,28 @@ export const MIN_RESERVE_USD = {
     '8453': 50000  // $5k on Base
 };
 
+export const MULTICALL_ADDRESSES = {
+    '1': '0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696',   // Ethereum
+    '8453': '0x091e99cb1C49331a94dD62755D168E941AbD0693' // Base
+    // Add other chains
+};
+
+export const MULTICALL_ABI = [
+    {
+        inputs: [{
+            components: [
+                { name: 'target', type: 'address' },
+                { name: 'callData', type: 'bytes' }
+            ],
+            name: 'calls',
+            type: 'tuple[]'
+        }],
+        name: 'aggregate',
+        outputs: [
+            { name: 'blockNumber', type: 'uint256' },
+            { name: 'returnData', type: 'bytes[]' }
+        ],
+        stateMutability: 'view',
+        type: 'function'
+    }
+] as const;

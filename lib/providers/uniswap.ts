@@ -2,9 +2,8 @@ import { ftch, jsonrpc } from 'micro-ftch';
 import { QuoteRequest, QuoteResponse, TokenInfo, Route, Pool, PoolsByType, CandidatePools } from '@/types';
 import { addr } from 'micro-eth-signer';
 import { createContract } from 'micro-eth-signer/abi';
-// import { amounts } from 'micro-eth-signer/utils';
 import { Web3Provider } from 'micro-eth-signer/net';
-import { BASE_TOKENS, ERC20_ABI, MIN_RESERVE_USD, MIXED_ROUTE_QUOTER_V1_ABI, RPCS, UNISWAP_MIXED_ROUTE_QUOTER_ADDRESSES, UNISWAP_SUBGRAPH_URL } from '@/config/constants';
+import { BASE_TOKENS, ERC20_ABI, MIN_RESERVE_USD, MIXED_ROUTE_QUOTER_V1_ABI, MULTICALL_ABI, MULTICALL_ADDRESSES, RPCS, UNISWAP_MIXED_ROUTE_QUOTER_ADDRESSES, UNISWAP_SUBGRAPH_URL } from '@/config/constants';
 
 export class UniswapProvider {
     private readonly fetch: ReturnType<typeof ftch>;
@@ -350,57 +349,84 @@ export class UniswapProvider {
     async getQuote(request: QuoteRequest): Promise<QuoteResponse> {
         const { chainId, fromToken, toToken, amount } = request;
 
-        // 1. Get pools from subgraph
+        // Get pools and compute routes
         const pools = await this.getPoolsFromSubgraph(chainId, fromToken, toToken);
-        // 2. Find best routes using pools
         const routes = this.computeRoutes(pools, fromToken, toToken);
-        // 3. Get quotes for routes using Quoter contract
-        const quoterContract = createContract(
-            MIXED_ROUTE_QUOTER_V1_ABI,
-            this.getProvider(chainId),
-            UNISWAP_MIXED_ROUTE_QUOTER_ADDRESSES[chainId as keyof typeof UNISWAP_MIXED_ROUTE_QUOTER_ADDRESSES]
-        );
 
-        const quotes = await Promise.all(
-            routes.map(route =>
-                this.getQuoteForRoute(quoterContract, route, amount)
-            )
-        );
+        // Get token info and quotes in parallel
+        const [tokenInfos, quotes] = await Promise.all([
+            this.fetchTokenInfo(chainId, [fromToken, toToken]),
+            this.getQuoteForRoute(chainId, routes, amount)
+        ]);
 
-        // 4. Select best quote
+        // Select best quote
         const bestQuote = this.selectBestQuote(quotes);
-        // console.log(bestQuote)
+
+        // Get tokens from results
+        const [srcToken, dstToken] = tokenInfos;
+
         return {
             provider: 'uniswap',
             chainId,
-            srcToken: await this.fetchTokenInfo(chainId, fromToken),
-            dstToken: await this.fetchTokenInfo(chainId, toToken),
+            srcToken,
+            dstToken,
             fromAmount: amount,
             dstAmount: bestQuote.amountOut,
-            protocols: [bestQuote.route], // 'v2' or 'v3'
+            protocols: [bestQuote.route],
             gas: bestQuote.gasEstimate
         };
     }
 
-    private async fetchTokenInfo(chainId: string, address: string): Promise<TokenInfo> {
-
+    private async fetchTokenInfo(chainId: string, addresses: string[]): Promise<TokenInfo[]> {
         const provider = this.getProvider(chainId);
-        const contract = createContract(ERC20_ABI, provider, address);
+        const multicallContract = createContract(MULTICALL_ABI, provider, MULTICALL_ADDRESSES[chainId as keyof typeof MULTICALL_ADDRESSES]);
+        const tokenContract = createContract(ERC20_ABI);
 
-        // Call the contract's methods to retrieve token information.
-        // Using Promise.all here so the calls run concurrently.
-        const [symbol, name, decimals] = await Promise.all([
-            contract.symbol.call(),
-            contract.name.call(),
-            contract.decimals.call()
+        const calls = addresses.flatMap(address => [
+            {
+                target: address,
+                callData: tokenContract.symbol.encodeInput()
+            },
+            {
+                target: address,
+                callData: tokenContract.name.encodeInput()
+            },
+            {
+                target: address,
+                callData: tokenContract.decimals.encodeInput()
+            }
         ]);
-        // Return the token info in the expected format
-        return {
-            address,
-            symbol,
-            name,
-            decimals: Number(decimals),
-        };
+
+        const { blockNumber, returnData } = await multicallContract.aggregate.call(calls);
+
+        const tokenInfos: TokenInfo[] = [];
+
+        for (let i = 0; i < addresses.length; i++) {
+            const address = addresses[i];
+            const startIdx = i * 3;
+
+            try {
+                const symbolData = returnData[startIdx];
+                const nameData = returnData[startIdx + 1];
+                const decimalsData = returnData[startIdx + 2];
+
+                const symbol = tokenContract.symbol.decodeOutput(symbolData) as string;
+                const name = tokenContract.name.decodeOutput(nameData) as string;
+                const decimals = Number(tokenContract.decimals.decodeOutput(decimalsData));
+
+                tokenInfos.push({
+                    address,
+                    symbol,
+                    name,
+                    decimals
+                });
+            } catch (error) {
+                console.error(`Failed to decode token info for ${address}:`, error);
+                tokenInfos.push({ address });
+            }
+        }
+
+        return tokenInfos;
     }
 
     private computeRoutes(
@@ -528,54 +554,68 @@ export class UniswapProvider {
     }
 
     private async getQuoteForRoute(
-        quoterContract: ReturnType<typeof createContract>,
-        route: Route,
+        chainId: string,
+        routes: Route[],
         amountIn: string
-    ): Promise<{
+    ): Promise<Array<{
         route: Route;
         amountOut: string;
         gasEstimate: string;
-    }> {
-        try {
-            const encodedPath = this.encodePath(route);
+    }>> {
+        const provider = this.getProvider(chainId);
 
-            // Convert hex string to Uint8Array for the bytes parameter
+        const quoterContract = createContract(
+            MIXED_ROUTE_QUOTER_V1_ABI,
+            provider,
+            UNISWAP_MIXED_ROUTE_QUOTER_ADDRESSES[chainId as keyof typeof UNISWAP_MIXED_ROUTE_QUOTER_ADDRESSES]
+        );
+
+        const multicallContract = createContract(
+            MULTICALL_ABI,
+            provider,
+            MULTICALL_ADDRESSES[chainId as keyof typeof MULTICALL_ADDRESSES]
+        );
+
+        // Prepare all paths for batch processing
+        const calls = routes.map(route => {
+            const encodedPath = this.encodePath(route);
             const pathBytes = new Uint8Array(
                 encodedPath
-                    .slice(2) // Remove '0x' prefix
-                    .match(/.{1,2}/g)! // Split into 2-char chunks
+                    .slice(2)
+                    .match(/.{1,2}/g)!
                     .map(byte => parseInt(byte, 16))
             );
 
-            // Call quoter - it will handle all decimal conversions internally
-            const callResult = await (quoterContract as {
-                quoteExactInput: {
-                    call: (args: {
-                        path: Uint8Array;
-                        amountIn: bigint
-                    }) => Promise<{
-                        amountOut: bigint;
-                        gasEstimate: bigint
-                    }>
-                }
-            }).quoteExactInput.call({
-                path: pathBytes,
-                amountIn: BigInt(amountIn)
-            });
-
-            // Return raw quote results - amountOut is already in correct decimals
+            // Encode the quote function call with proper object structure
             return {
-                route,
-                amountOut: callResult.amountOut.toString(),
-                gasEstimate: callResult.gasEstimate.toString(),
+                target: UNISWAP_MIXED_ROUTE_QUOTER_ADDRESSES[chainId as keyof typeof UNISWAP_MIXED_ROUTE_QUOTER_ADDRESSES],
+                callData: quoterContract.quoteExactInput.encodeInput({
+                    path: pathBytes,
+                    amountIn: BigInt(amountIn)
+                })
             };
-        } catch (error) {
-            console.error('Quote error details:', {
-                route: JSON.stringify(route),
-                error: error,
-            });
-            throw new Error(`Quote failed: ${error}`);
-        }
+        });
+
+        // Make multicall
+        const { blockNumber, returnData } = await multicallContract.aggregate.call(calls);
+
+        // Process results
+        return routes.map((route, i) => {
+            try {
+                const decodedResult = quoterContract.quoteExactInput.decodeOutput(returnData[i]);
+                return {
+                    route,
+                    amountOut: decodedResult.amountOut.toString(),
+                    gasEstimate: decodedResult.gasEstimate.toString()
+                };
+            } catch (error) {
+                console.error('Quote error details:', {
+                    route: JSON.stringify(route),
+                    error: error,
+                });
+                return null;
+            }
+        }).filter((quote): quote is NonNullable<typeof quote> => quote !== null);
     }
 
     private encodePath(route: Route): string {
