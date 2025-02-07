@@ -397,7 +397,7 @@ export class UniswapProvider {
             }
         ]);
 
-        const { blockNumber, returnData } = await multicallContract.aggregate.call(calls);
+        const { returnData } = await multicallContract.aggregate.call(calls);
 
         const tokenInfos: TokenInfo[] = [];
 
@@ -597,7 +597,7 @@ export class UniswapProvider {
         });
 
         // Make multicall
-        const { blockNumber, returnData } = await multicallContract.aggregate.call(calls);
+        const { returnData } = await multicallContract.aggregate.call(calls);
 
         // Process results
         return routes.map((route, i) => {
