@@ -202,7 +202,6 @@ export class UniswapProvider {
             });
     }
 
-
     private categorizePools(
         chainId: string,
         pools: PoolsByType,
@@ -381,7 +380,6 @@ export class UniswapProvider {
             protocols: [bestQuote.route], // 'v2' or 'v3'
             gas: bestQuote.gasEstimate
         };
-
     }
 
     private async fetchTokenInfo(chainId: string, address: string): Promise<TokenInfo> {
@@ -409,7 +407,7 @@ export class UniswapProvider {
         candidatePools: CandidatePools,
         fromToken: string,
         toToken: string,
-        maxHops = 3
+        maxHops = 4
     ): Route[] {
         const routes: Route[] = [];
         const visited = new Set<string>();
@@ -620,17 +618,14 @@ export class UniswapProvider {
         return `0x${path}`;
     }
 
-
     private selectBestQuote(quotes: Array<{
         route: Route;
         amountOut: string;
         gasEstimate: string;
-        priceImpact?: string;
     }>): {
         route: Route;
         amountOut: string;
         gasEstimate: string;
-        priceImpact?: string;
     } {
         // Filter out failed quotes
         const validQuotes = quotes.filter(q => q !== null && BigInt(q.amountOut) > 0);
@@ -643,17 +638,6 @@ export class UniswapProvider {
         const calculateRouteScore = (quote: typeof validQuotes[0]) => {
             const amount = BigInt(quote.amountOut);
             const gas = BigInt(quote.gasEstimate);
-            const priceImpact = quote.priceImpact ? parseFloat(quote.priceImpact) : 0;
-
-            // Calculate route complexity factor
-            const routeComplexity = quote.route.pools.length;
-            const complexityPenalty = routeComplexity > 1 ? (routeComplexity - 1) * 0.002 : 0; // 0.2% penalty per additional hop
-
-            // Calculate protocol risk factor
-            const protocolRiskFactor = quote.route.pools.reduce((risk, pool) => {
-                // V2 pools are considered more battle-tested than V3
-                return risk + (pool.type === 'v2' ? 0 : 0.001); // 0.1% penalty for V3 pools
-            }, 0);
 
             // Calculate liquidity score
             const liquidityScore = quote.route.pools.reduce((score, pool) => {
@@ -667,8 +651,7 @@ export class UniswapProvider {
             // Higher score is better
             const score = {
                 outputAmount: amount,
-                gasAdjustedAmount: amount - (gas * BigInt(21000)), // Approximate gas cost in base token units
-                priceImpactScore: 1 - priceImpact - complexityPenalty - protocolRiskFactor,
+                gasAmount: gas,
                 liquidityScore: liquidityScore
             };
 
@@ -694,26 +677,19 @@ export class UniswapProvider {
                     return current;
                 }
 
-                // If current route has better price impact and similar liquidity
-                if (currentScore.priceImpactScore > bestScore.priceImpactScore &&
-                    currentScore.liquidityScore >= bestScore.liquidityScore * 0.9) {
-                    return current;
-                }
-
                 // If current route has significantly better gas costs (30% better)
-                if (currentScore.gasAdjustedAmount > bestScore.gasAdjustedAmount * BigInt(130) / BigInt(100)) {
+                if (currentScore.gasAmount > bestScore.gasAmount * BigInt(130) / BigInt(100)) {
                     return current;
                 }
 
                 // Prefer simpler routes when other factors are similar
                 if (current.route.pools.length < best.route.pools.length &&
-                    currentScore.gasAdjustedAmount >= bestScore.gasAdjustedAmount * BigInt(95) / BigInt(100)) {
+                    currentScore.gasAmount >= bestScore.gasAmount * BigInt(95) / BigInt(100)) {
                     return current;
                 }
             } else {
-                // If outputs are notably different, take the higher output if the price impact isn't too high
-                if (currentScore.outputAmount > bestScore.outputAmount &&
-                    currentScore.priceImpactScore > -0.05) { // Accept up to 5% price impact
+                // If outputs are notably different, take the higher output
+                if (currentScore.outputAmount > bestScore.outputAmount) {
                     return current;
                 }
             }

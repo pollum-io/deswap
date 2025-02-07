@@ -13,6 +13,7 @@ export const SUPPORTED_CHAINS = {
 
 export const RPCS = {
     '1': [  // Ethereum
+        'https://delicate-snowy-friday.quiknode.pro/241eddf89687a5593096dbd4fff60b0dc84bdbb3',
         'https://eth.llamarpc.com/',
         'https://rpc.ankr.com/eth',
         'https://ethereum.publicnode.com/',
@@ -114,7 +115,6 @@ export const ONEINCH_SPENDER_ADDRESSES = {
     '8453': '0x1111111254EEB25477B68fb85Ed929f73A960582',  // Base
     '324': '0x6e2B76966cbD9cF4cC2Fa0D76d24d5241E0ABC2F',   // ZkSync
 };
-
 
 export const UNISWAP_V2_FACTORY_ADDRESSES = {
     '1': '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f',
